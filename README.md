@@ -46,6 +46,7 @@ Components:
 
 - Native Kubernetes integration using CRDs.
 - Scalable multi-node Elasticsearch cluster:
+  with role **["master", "data", "ingest", "transform"]**
     - 3 master nodes
     - 5 data-ml nodes
     - 3 ingest nodes
