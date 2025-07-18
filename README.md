@@ -18,6 +18,7 @@ It enables high-availability log aggregation, centralized visualization, and obs
 - [Usage Instructions](#usage-instructions)
 - [Configuration](#configuration)
 - [Management](#management)
+- [Upgrading Elasticsearch](#upgrading-elasticsearch)
 - [Accessing Kibana](#accessing-kibana)
 - [Customization Tips](#customization-tips)
 - [File Reference](#file-reference)
@@ -157,6 +158,121 @@ Check ECK Operator logs for controller-level diagnostics:
 ```bash
 kubectl logs -n elastic-system deployment/elastic-operator
 ```
+## 🔄 Upgrading Elasticsearch
+
+ECK provides a **safe and automated way** to upgrade Elasticsearch versions without data loss through rolling upgrades. The operator handles the entire process, including data migration and node management.
+
+### How ECK Handles Upgrades
+
+ECK automatically manages the upgrade process by:
+
+- Creating new nodes with the newer Elasticsearch version
+- Migrating data from old nodes to newer ones
+- Removing older nodes after successful data migration
+- Preserving PersistentVolumes during the upgrade process
+
+
+### Step-by-Step Upgrade Process
+
+**1. Verify ECK Operator Compatibility**
+
+Before upgrading Elasticsearch, ensure your ECK operator version is compatible with the target Elasticsearch version.
+
+**2. Modify the Elasticsearch Manifest**
+
+Simply update the `version` field in your Elasticsearch YAML manifest:
+
+```yaml
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: observability
+spec:
+  version: 8.18.3  # Update to your desired version
+  nodeSets:
+  - name: master
+    count: 3
+    config:
+      node.roles: ["master"]
+    # ... rest of your configuration
+```
+
+**3. Apply the Updated Configuration**
+
+Deploy the updated manifest:
+
+```bash
+kubectl apply -f elasticsearch.yaml
+```
+
+The ECK operator will automatically detect the version change and initiate the rolling upgrade process.
+
+### Monitoring the Upgrade
+
+Monitor the upgrade progress with:
+
+```bash
+# Check overall cluster status
+kubectl get elasticsearch -n observability
+
+# Monitor pods during upgrade
+kubectl get pods -n observability -w
+
+# Check ECK operator logs
+kubectl logs -n elastic-system deployment/elastic-operator
+```
+
+
+### Important Considerations
+
+- **Rolling Upgrades**: Supported between compatible versions (typically minor versions)
+- **Major Upgrades**: May require specific upgrade paths or intermediate versions
+- **Breaking Changes**: Always review Elasticsearch release notes for breaking changes
+
+
+### Data Safety Measures
+
+Before upgrading, consider these safety measures:
+
+1. **Create Snapshots**: Take a snapshot of your cluster data
+2. **Backup Configuration**: Save your current Elasticsearch configuration
+3. **Test Environment**: Test the upgrade in a non-production environment first
+4. **Monitor Resources**: Ensure adequate resources during the upgrade process
+
+### Troubleshooting Common Issues
+
+**Upgrade Stuck or Failed**
+
+If the upgrade process stalls:
+
+1. Check ECK operator logs for error messages
+2. Verify cluster health: `kubectl get elasticsearch -n observability`
+3. Ensure sufficient resources are available
+4. Review Elasticsearch pod logs for specific errors
+
+**Preventing Automatic Upgrades**
+
+To temporarily prevent upgrades, use the unmanaged annotation:
+
+```bash
+kubectl annotate elasticsearch elasticsearch eck.k8s.elastic.co/managed=false -n observability
+```
+
+Remove the annotation when ready to proceed:
+
+```bash
+kubectl annotate elasticsearch elasticsearch eck.k8s.elastic.co/managed- -n observability
+```
+
+
+### Best Practices
+
+1. **Gradual Upgrades**: Upgrade one minor version at a time for major version jumps
+2. **Resource Planning**: Ensure adequate CPU, memory, and storage during upgrades
+3. **Monitoring**: Continuously monitor cluster health and performance
+4. **Documentation**: Keep track of upgrade history and configurations
+5. **Rollback Plan**: Prepare a rollback strategy in case of issues
 
 
 ## 🌐 Accessing Kibana
